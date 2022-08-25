@@ -53,3 +53,4 @@ O data_labe é uma organização social com sede no conjunto de favelas da Maré
                    4. A análise de risco para abordagem (regressão logística)
 
 
+:nerd_face: |  [Paulo Mota](https://rpubs.com/polinhobr/679254)
