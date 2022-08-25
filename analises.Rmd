@@ -1,0 +1,1371 @@
+---
+title: ""
+author: ""
+date: ""
+output:
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+  pdf_document:
+    toc: yes
+---
+
+
+<br>
+<br>
+<br>
+<br>
+
+<right>
+
+## **Relatório final - Dia 07/06/2021**  
+![](/home/usuario/Downloads/TWITTER_CARTAZ.png)
+  
+<br>
+
+
+```{r include=FALSE}
+library(plotly)
+library(ggplot2)
+library(lubridate)
+library(rmarkdown)
+library(stringr)
+library(knitr)
+library(dplyr)
+library(geobr)
+library(ggplot2)
+library(sf)
+library(dplyr)
+library(wordcloud)
+library(RColorBrewer)
+library(wordcloud2)
+library(tm)
+library(stringr)
+library(epiDisplay)
+```
+
+```{r echo=FALSE}
+options(scipen = 999)
+base <- read.csv("porqueeu_semcripto.csv", colClasses = "character", sep=",")
+```
+
+
+
+```{r echo=FALSE}
+base$dia <- substr(base$Submission.Date, 1, 10)
+base$hora <- substr(base$Submission.Date, 12,13)
+
+base <- subset(base, dia!= "2021-04-29" & dia!="2021-04-30")
+names(base) <- c("Envio", "EstadoBR", "Capital", "Favela",
+                 "Bairro", "FaixaEtária", "Raça", "Gênero",
+                 "Trans","Escolaridade","Abordado","Quantidade",
+                 "Qtd_+10","Última","Ocorridos", "PolicialMesmoGênero",
+                 "Revistas","Tratamento","Ocorridos2","Sentimentos",
+                 "Transporte","Racismo","Armas","Motivo",
+                 "Identificação","Tempo","Tipos","Local",
+                 "Imagem","Menor18","Casa","Delegacia",
+                 "NaDelegacia","Conhecidos","Conte","Email",
+                 "Telefone", "x","dia","hora")
+base$Capital[which(base$Capital=="Capital do estado")] <- "Capital"
+base$Capital[which(base$Capital=="Cidade próxima da capital (região metropolitana)")] <- "Reg.Metropolitana"
+base$Capital[which(base$Capital=="Uma cidade do interior, localizada na zona rural")] <- "Zona Rural"
+base$Capital[which(base$Capital=="Uma cidade do interior, mas não é zona rural")] <- "Interior ñ Rural"
+base$Capital[which(base$Capital=="Uma cidade do litoral, mas não é capital")] <- "Litoral"
+base$Bairro[which(base$Bairro=="Uma região com a maioria da população formada por famílias com renda alta")] <- "Bairro Renda Alta"
+base$Bairro[which(base$Bairro=="Uma região com a maioria da população formada por famílias com renda baixa")] <- "Bairro Renda Baixa"
+base$Bairro[which(base$Bairro=="Uma região com a maioria da população formada por famílias com renda média")] <- "Bairro Renda Média"
+base$Bairro[which(base$Bairro=="Uma região com a maioria da população formada por famílias em situação precária")] <- "Bairro Renda Precária"
+base$Bairro[which(base$Bairro!="Bairro Renda Alta" & 
+                    base$Bairro!="Bairro Renda Baixa" &
+                    base$Bairro!="Bairro Renda Média" &
+                    base$Bairro!="Bairro Renda Precária")] <- ""
+base$Última[which(base$Última=="Eu não me lembro quando foi a última vez que fui abordado")] <- "Não lembra"
+base$Última[which(base$Última=="Há mais de 1 ano e menos de 5 anos")] <- "1 a 5 anos"
+base$Última[which(base$Última=="Há mais de 3 meses e menos de 6 meses")] <- "3 - 6 meses"
+base$Última[which(base$Última=="Há mais de 5 anos")] <- "> 5 anos"
+base$Última[which(base$Última=="Há mais de 6 meses e menos de 1 ano")] <- "6 meses - 1 ano"
+base$Última[which(base$Última=="Nos últimos 3 meses")] <- "< 3 meses"
+base$PolicialMesmoGênero[which(base$PolicialMesmoGênero=="Não, eu já fui revistado por policiais/agentes do sexo diferente do meu")] <- "Gênero diferente"
+base$PolicialMesmoGênero[which(base$PolicialMesmoGênero=="Sim, eu SEMPRE fui revistado por policiais/agentes do mesmo sexo que eu")] <- "Mesmo gênero"
+base$Transporte[which(base$Transporte=="em ônibus, metrô, trem (transporte público)")] <- "Transporte público"
+base$Armas[which(base$Armas=="Estavam armados, E ALGUMAS vezes apontaram a arma para mim")] <- "Algumas vezes"
+base$Armas[which(base$Armas=="Estavam armados, E SEMPRE apontaram a arma para mim")] <- "Sempre"
+base$Armas[which(base$Armas=="Estavam armados, E SÓ ficaram com a mão sobre a arma na cintura")] <- "Mão na arma no coldre"
+base$Armas[which(base$Armas=="Estavam armados, MAS NUNCA apontaram a arma para mim")] <- "Nunca"
+base$Armas[which(base$Armas=="Eu não me lembro de o policial estar armado em uma abordagem")] <- "Não me lembro"
+base$Armas[which(base$Armas=="Não estavam armados, ou pelo menos, não vi nenhuma arma")] <- "Não estavam armados"
+base$Identificação[which(base$Identificação=="Eu NUNCA foi abordado por policiais SEM identificação")] <- "Nunca"
+base$Identificação[which(base$Identificação=="Fui abordado só UMA vez por policiais SEM identificação")] <- "Uma vez"
+base$Identificação[which(base$Identificação=="Já fui abordado ALGUMAS vezes por policiais SEM identificação")] <- "Algumas vezes"
+base$Identificação[which(base$Identificação=="SEMPRE fui abordado por policiais SEM  identificação")] <- "Sempre"
+base$Local[which(base$Local=="A maioria das abordagens foi em locais diversos")] <- "Diversos"
+base$Local[which(base$Local=="A maioria das abordagens que sofri foi nos mesmos lugares (bairro que moro/frequento, esquinas perto de onde moro, etc.)")] <- "Mesmos lugares"
+base$Local[which(base$Local=="Não tem um padrão, fui abordado várias vezes nos mesmos locais e também fui abordado em locais diversos")] <- "Sem padrão"
+base$Local[which(base$Local!= "Diversos" &
+                   base$Local!= "Mesmos lugares" & 
+                   base$Local!= "Sem padrão" )] <- ""
+base$Imagem[which(base$Imagem=="Já tiraram fotos dos meus documentos na abordagem")] <- "Apenas docs"
+base$Imagem[which(base$Imagem=="Na própria abordagem, o policial fotografou ou filmou")] <- "Foto ou vídeo"
+base$Imagem[which(base$Imagem=="Nunca pediram pra tirar minha foto ou qualquer registro de imagem")] <- "Nunca"
+```
+
+
+```{r echo=FALSE}
+#separando negros e não
+baseneg <- base
+baseneg$Raça[which(baseneg$Raça=="Preta")] <- "Negra"
+baseneg$Raça[which(baseneg$Raça=="Parda")] <- "Negra"
+```
+  
+
+Até 12:00 de 07/06/2021, recebemos **um mil quinhentas e trinta e sete (1.537) respostas**.
+
+<br>
+<br>
+  
+## **Critérios de exclusão**
+  41 respostas contiveram erros de DEcriptografia, até o presente momento não foi possível solucionar este desafio porque pela segurança é imposśivel ver o conteúdo original do envio, nem mesma a empresa que sedia o servidor possui essa informação. A principal categoria de erro ocorreu na categoria Bairro que reside, responsável por 39 das exclusões.
+  
+  **Dessa forma possuímos um mil e quatrocentos e noventa e seis (1496) respostas válidas**
+  *Abaixo você confere cada critério de exclusão*
+
+```{r}
+table(baseneg$EstadoBR)
+#um estado vazio
+final <-subset(baseneg, EstadoBR!="")
+
+table(final$Favela)
+#uma linha vazia
+final <- subset(final, Favela!="")
+
+table(final$Bairro)
+
+#433 vazios, porem apenas 394 sao favelas tem uma diferenca de 39 respostas
+final$Bairro[which(final$Favela=="Sim")] <- "Favela"
+final <- subset(final, Bairro!="")
+```
+
+
+  
+## **Estados do Brasil**
+  
+  A média de respostas por estados foi de aproximadamente 58 respostas. Porém a variação foi muito grande, indo de no mínimo uma (1) resposta, como Roraima, até quatrocentos e quarenta e cinco respostas (445), como o estado do Rio de Janeiro.
+
+```{r echo=FALSE}
+table(final$EstadoBR)
+est <- table(final$EstadoBR)
+est <- cbind(estados=row.names(est),qtd=est)
+est <- as.data.frame.matrix(est)
+est$qtd <- as.character(est$qtd)
+est$qtd <- as.numeric(est$qtd)
+summary(est$qtd)
+```
+
+![](/home/usuario/Documentos/data_labe/racismo_policial/respostas_estados_07062021.png)
+
+## **Capital x Outros**
+  
+  A maioria dos respondentes declararam que moram na capital do estado. 893 declararam que moram na capital do estado (59,7%).
+```{r echo=FALSE}
+tab1(final$Capital, graph = F)
+capital <- ggplot(final, aes(Capital, fill=Capital)) +
+ geom_bar(show.legend = F) +
+ labs(x="De qual área do estado?", y="quantidade", title = "")+
+ theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()
+ggplotly(capital + theme(legend.position = "none"))
+```
+  
+
+
+## **Moram em favelas/periferia?**
+  
+  1102 pessoas declararam não morar em favelas, periferias ou comunidades (73,7%). 
+```{r echo=FALSE}
+tab1(final$Favela, graph = F)
+favelas <- ggplot(final, aes(Favela, fill=Favela)) +
+  geom_bar(show.legend = F) +
+  labs(x="Mora em que área da cidade?", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))
+ggplotly(favelas + theme(legend.position = "none"))
+```
+  
+  Das 394 pessoas que declararam morar em favelas, 346 se auto declararam como negras (87,8%).
+```{r echo=FALSE}
+tabpct(final$Favela, final$Raça, main = "Moradores de favela por Raça/cor", las=1, ylab="Raça/cor",xlab="Mora em favela", percent = "row")
+```
+  
+<br>
+
+
+## **E quem não mora em favela, mora em:**
+  Aqueles que não moram em favela, podiam informar se o bairro em que moram era composto pela maioria de pessoas de alta/média/baixa renda, ou ainda de renda precária.
+  Dos que não moram em favela, 624 responderam que moram em bairro de classe média (41,7%).
+```{r echo=FALSE}
+tab1(final$Bairro, graph = F)
+```
+  
+  Conforme a tabela abaixo, podemos verificar que a predominância de pessoas negras só não ocorreu em bairros considerados compostos por famílias de renda alta, onde pessoas brancas são 51%.
+  Importante destacar que nos bairros compostos por famílias de renda precária 100% das pessoas negras.
+```{r}
+tabpct(final$Bairro, final$Raça, graph = F, las=1, percent = "row")
+```
+  
+  
+## **Faixa etária**
+  
+  A faixa etária mais predominante foi de pessoas com trinta e cinco anos ou mais (n=508 ; 34%).
+```{r echo=FALSE, message=FALSE}
+final$FaixaEtária <- as.factor(final$FaixaEtária)
+final$FaixaEtária <- factor(final$FaixaEtária, levels = c("Menos de 18 anos", "18 - 24 anos", "25 - 29 anos", "30 - 34 anos", "35 ou mais"))
+```
+  
+```{r echo=FALSE}
+idade <- ggplot(final, aes(FaixaEtária, fill=FaixaEtária)) +
+  geom_bar(show.legend = F) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))
+ggplotly(idade + theme(legend.position = "none"))
+```
+  
+  A segunda faixa etária mais predominante foi a jovens entre 18 e 24 anos, sendo 28,2% do total de respondentes. Demonstrando uma heterogeneidade entre os respondentes e suas idades. 
+```{r}
+tab1(final$FaixaEtária, graph = F)
+```
+ 
+
+<br>
+
+## **Raça**
+  
+  1050 pessoas são de raça negra (70,2%), a mais predominante entre todas.
+```{r echo=FALSE}
+raca <- ggplot(final, aes(Raça, fill=Raça)) +
+ geom_bar(show.legend = F) +
+ labs(x="", y="quantidade", title = "")+
+ theme(plot.title = element_text(color = "darkorchid4",family="Courier"))
+ggplotly(raca + theme(legend.position = "none"))
+```
+  
+  A segunda raça/cor mais predominante entre os respondentes foi "branca" (n= 427 ; 28,5%). 
+```{r}
+tab1(final$Raça, graph = F)
+```
+  
+  
+<br>
+
+## **Gênero**
+  
+  779 pessoas (52,1%) se declaram do gênero masculino.
+```{r echo=FALSE}
+genero <- ggplot(final, aes(Gênero, fill=Gênero)) +
+  geom_bar(show.legend = F) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()
+
+ggplotly(genero + theme(legend.position = "none"))
+```
+  
+```{r}
+tab1(final$Gênero, graph=F)
+```
+  
+  
+<br>
+
+## **Transexualidade**
+  
+  Vinte e quatro pessoas se auto declararam como pessoas trans
+```{r echo=FALSE}
+table(final$Trans)
+```
+  
+  É fundamental olhar como essas vinte e quatro pessoas declararam seu gênero para entender melhor a composição deste grupo populacional que frequentemente é noticiado como vítima de violência policial também. Podemos ver na tabela abaixo que a categoria de gênero mais predominante foi não-binaria (n=12 ; 50%). 
+```{r}
+tabpct(final$Gênero, final$Trans,  percent = "row", graph = F)
+```
+
+<br>
+
+## **Escolaridade**
+  
+  402 pessoas (26,9%) possuem superior incompleto.
+```{r echo=FALSE}
+escolaridade <- ggplot(final, aes(Escolaridade, fill=Escolaridade))+
+  geom_bar(show.legend = F) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()
+ggplotly(escolaridade + theme(legend.position = "none"))
+```
+  
+  Pela tabela abaixo é possível vermos uma distribuição homogênea em pelo menos três categorias: pós graduação, superior completo e incompleto. Desta forma, podemos analisar os respondentes entre "acessaram o ensino superior" versus os demais.
+  
+  Podemos afirmar que a maioria dos respondentes acessaram o ensino superior (n=1142 ; 76,3%).
+```{r}
+tab1(final$Escolaridade, graph=F)
+```
+  
+<br>
+  No Brasil, a raça e a escolaridade são grandes marcadores sociais e, ajudam a compreender o perfil sócio econômico das pessoas. Em nosso questionário decidimos não perguntar a renda pessoal/familiar para facilitar o uso e tempo de resposta, porém trouxemos a informação do local de moradia para compreender em que contexto cada pessoa estaria inserida.
+  
+  Sendo assim apresentaremos em seguida um gráfico que busca resumir estas três informações: raça, escolaridade e moradia.
+```{r}
+ggplot(final, aes(Raça, Escolaridade))+
+  geom_jitter(aes(colour=Favela), width = 0.50, alpha=0.50)
+```
+  
+  
+  Olhando de cima para baixo conseguimos ver que a maioria dos pontos se concentram na escolaridade que acessou o ensino superior, como já demonstrado. 
+  Porém existe um comportamento distinto principalmente na escolaridade "pós-graduação", conseguimos ver a quase ausência de pontos azuis do lado esquerdo do gráfico. 
+  Isso indica que entre as pessoas respondentes praticamente não há quem more em favela, que seja branca e com pós graduação ou ensino superior completo.
+  
+  Já na parte inferior do gráfico conseguimos identificar uma predominância dos pontos azuis, principalmente para à direita do gráfico. O que nos leva a afirmar que entre as pessoas respondentes com menor escolaridade, as que se auto declaram como negras tem maior probabilidade de morar em favela.
+  
+  Toda esta análise é importante para sabermos se as abordagens policiais ocorrem mais em grupo populacional ou não. Apenas para termos uma prévia, confira abaixo o mesmo gráfico porém dividido entre quem foi abordado e quem não.
+  
+```{r}
+ggplot(final, aes(Favela, Escolaridade))+
+  geom_jitter(aes(colour=Abordado), width = 0.50, alpha=0.50)+
+  facet_wrap(~Raça)+
+  theme(text = element_text(size=8))
+```
+  
+  Note que existe uma diferença entre as cores no gráfico. Há uma maior presença de pontos azuis na raça negra do que na raça branca. Indicando que negros são mais abordados pela polícia em geral. Pessoas negras são mais abordadas indistitamente do nível de escolaridade e de onde moram
+  Pessoas brancas que foram abordadas possuem maior escolaridade. Há poucas pessoas brancas morando em favelas, e não há distinção de abordagens em pessoas brancas pelo local que moram.
+<br>
+
+## Conteúdo
+*A partir desta parte do relatório, você confere as análises de conteúdo sobre as abordagens policias.*
+  
+## **Quantas já foram abordadas**
+  
+  951 pessoas (63,6%) já passaram por abordagens policiais
+```{r echo=FALSE}
+tab1(final$Abordado, graph = F)
+abordado <- ggplot(final, aes(Abordado, fill=Abordado))+
+  geom_bar(show.legend = F) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))
+ggplotly(abordado + theme(legend.position = "none"))
+```
+  
+  A tendência mostrada em gráficos anteriores se confirma na tabela abaixo. Note que na linha do "Sim" -já foram abordadas- 761 se auto declara negra (80% dos abordados).
+```{r}
+tabpct(final$Abordado, final$Raça, graph = F, percent = "row",las = 1)
+```
+  
+<br>
+
+## **Quantidade de abordagens**
+
+*A partir desta parte do relatório, você confere as análises apenas de quem declarou ter passado por abordagens policiais (951 pessoas).*
+  
+  A gategoria mais predominante informou que foi abordada entre 2 e 4 vezes (n=374 ; 39,3%)
+```{r echo=FALSE}
+base3 <- subset(final, Abordado=="Sim")
+tab1(base3$Quantidade, graph = F)
+qtde <- ggplot(base3, aes(Quantidade, fill=Quantidade))+
+  geom_bar(show.legend = F) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))
+ggplotly(qtde + theme(legend.position = "none"))
+```
+  
+  As outras categorias de informação possuem uma distribuição parecidas. Chamamos atenção para a categoria que informou ter sido abordada mais que dez vezes. Para estas pessoas, o questionário abria a possibilidade de preenchimento manual da quantidade.
+  
+  Entre as pessoas que responderam passar por mais de dez abordagens, a média informada foi de 36,86 vezes. Variando de 2 a 1000.
+  A média da quantidade de abordagens varia entre as raças. Pessoas negras informaram terem sido abordadas em média 38 vezes, brancas 22 e indígenas 12.
+  
+```{r}
+base3$`Qtd_+10` <- as.numeric(base3$`Qtd_+10`)
+base3 %>% group_by(Raça) %>% summarise(mean(`Qtd_+10`, na.rm=T))
+```
+  Em uma tentativa de normalizar este valor, e um possível erro de informação, excluímos os valores que ficaram abaixo do primeiro quartil (15) e acima do terceiro quartil (30).
+  Com essa correção dos valores mais extremos, percebemos que a média se desloca para menos. Sendo o novo valor de 21,49 vezes. E não há diferença da quantidade de abordagens, entre aqueles que foram abordados mais de dez vezes.
+
+```{r}
+base3$`Qtd_+10`[which(base3$`Qtd_+10`<15)] <- NA
+base3$`Qtd_+10`[which(base3$`Qtd_+10`>30)] <- NA
+base3 %>% group_by(Raça) %>% summarise(mean(`Qtd_+10`, na.rm=T))
+```
+  
+<br>
+  Por fim, vale a pena verificarmos como as quantidades até 10 se comportam entre as raças.
+  Pessoas negras abordadas apenas uma vez são apenas 15%, enquanto que pessoas brancas que foram abordadas apenas uma vez são 50%. Já a porcentagem que foi abordado mais de 10 vezes é superior para pessoas negras. 
+  Entre pessoas negras, 18% informou que foi abordado mais de 10 vezes, contra 8,3% entre brancas
+```{r}
+tabpct(base3$Quantidade,base3$Raça, graph = F, percent = "col")
+qtde2 <- ggplot(base3, aes(Raça, fill=Quantidade)) +
+  geom_bar(aes(fill=Quantidade), position='fill')+
+  labs(x="", y="", fill="")+
+  coord_flip()+
+  scale_color_brewer(palette="Set2")
+ggplotly(qtde2)
+```
+  
+  
+<br>
+
+## **Última abordagem**
+  
+  346 pessoas (36,4%) tiveram sua última abordagem há mais de 1 ano e menos de 5 anos.
+```{r echo=FALSE, message=FALSE}
+base3$Última <- as.factor(base3$Última)
+base3$Última <- factor(base3$Última, levels = c("< 3 meses", "3 - 6 meses", "6 meses - 1 ano", "1 a 5 anos", "> 5 anos", "Não lembra"))
+```
+  
+```{r echo=FALSE}
+tab1(base3$Última, graph=F)
+ultima <- ggplot(base3, aes(Última, fill=Última))+
+  geom_bar(show.legend = F) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()
+ggplotly(ultima + theme(legend.position = "none"))
+```
+  
+  Uma das ressalvas de nossa pesquisa é justamente que a juventude negra é a que está mais exposta às abordagens policiais. Por isso é importante ver se existe diferença na última abordagem recordada pela raça e faixa etária.
+  Entre 18 e 34 anos a categoria mais predominante foi de pessoas que foram abordadas pela última vez entre 1 a 5 anos.
+  Porém, a partir de 25 anos de idade, mais pessoas declararam ter sido abordadas pela última vez há mais de 5 anos. E finalmente, entre os respondentes com mais de 35 anos a maioria respondeu que foi abordada há mais de 5 anos.
+  Importante notar o crescimento da raça branca conforme as faixas etárias. O que representa que a maioria dos nossos respondentes brancos são de faixa etária mais avançada e que foram abordadas até seus 30 anos de idade. 
+  
+```{r}
+ultima2 <- ggplot(base3, aes(Última, fill=Raça))+
+  geom_bar(show.legend = F) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()+
+  facet_wrap(~FaixaEtária)
+ggplotly(ultima2 + theme(legend.position = "bottom"))
+```
+  
+  
+<br>
+
+## **O que houve na abordagem?**
+  
+```{r echo=FALSE}
+brancos <- subset(base3, Raça=="Branca")
+negros <- subset(base3, Raça=="Negra")
+ocorridosb <- brancos$Ocorridos
+cat1 <- grep("Houve consulta aos meus documentos", ocorridosb)
+cat1 <- rep("Houve consulta aos meus documentos", each=144)
+cat1 <- cbind(nome=row.names(cat1), cat=cat1)
+cat1 <- as.data.frame.matrix(cat1)
+cat2 <- grep("Houve revista no meu celular", ocorridosb)
+cat2 <- rep("Houve revista no meu celular", each=12)
+cat2 <- cbind(nome=row.names(cat2), cat=cat2)
+cat2 <- as.data.frame.matrix(cat2)
+cat3 <- grep("Houve revista na minha bolsa/mochila", ocorridosb)
+cat3 <- rep("Houve revista na minha bolsa/mochila", each=71)
+cat3 <- cbind(nome=row.names(cat3), cat=cat3)
+cat3 <- as.data.frame.matrix(cat3)
+cat4 <- grep("Houve revista pessoal", ocorridosb)
+cat4 <- rep("Houve revista pessoal", each=90)
+cat4 <- cbind(nome=row.names(cat4), cat=cat4)
+cat4 <- as.data.frame.matrix(cat4)
+cat5 <- grep("Jogaram meus pertences no chão", ocorridosb)
+cat5 <- rep("Jogaram meus pertences no chão", each=16)
+cat5 <- cbind(nome=row.names(cat5), cat=cat5)
+cat5 <- as.data.frame.matrix(cat5)
+cat6 <- grep("Perguntaram para onde eu estava indo", ocorridosb)
+cat6 <- rep("Perguntaram para onde eu estava indo", each=104)
+cat6 <- cbind(nome=row.names(cat6), cat=cat6)
+cat6 <- as.data.frame.matrix(cat6)
+cat7 <- grep("Perguntaram se era eu traficante ou tinha relação com o tráfico", ocorridosb)
+cat7 <- rep("Perguntaram se era eu traficante ou tinha relação com o tráfico", each=29)
+cat7 <- cbind(nome=row.names(cat7), cat=cat7)
+cat7 <- as.data.frame.matrix(cat7)
+cat8 <- grep("Houve revista no veículo", ocorridosb)
+cat8 <- rep("Houve revista no veículo", each=68)
+cat8 <- cbind(nome=row.names(cat8), cat=cat8)
+cat8 <- as.data.frame.matrix(cat8)
+cat9 <- grep("Tentaram armar uma situação falsa para me incriminar", ocorridosb)
+cat9 <- rep("Tentaram armar uma situação falsa para me incriminar", each=14)
+cat9 <- cbind(nome=row.names(cat9), cat=cat9)
+cat9 <- as.data.frame.matrix(cat9)
+cat10 <- grep("Disseram que um dos meus pertences era roubado", ocorridosb)
+cat10 <- rep("Disseram que um dos meus pertences era roubado", each=6)
+cat10 <- cbind(nome=row.names(cat10), cat=cat10)
+cat10 <- as.data.frame.matrix(cat10)
+cat11 <- grep("Rasgaram meus documentos", ocorridosb)
+cat11 <- rep("Rasgaram meus documentos", each=2)
+cat11 <- cbind(nome=row.names(cat11), cat=cat11)
+cat11 <- as.data.frame.matrix(cat11)
+ocorrb <- rbind(cat1,cat2,cat3,cat4,cat5,cat6,cat7,cat8,cat9,cat10,cat11)
+ocorrb$cat <- factor(ocorrb$cat, levels=c("Rasgaram meus documentos",
+                                        "Disseram que um dos meus pertences era roubado",
+                                        "Tentaram armar uma situação falsa para me incriminar",
+                                        "Jogaram meus pertences no chão",
+                                        "Houve revista no meu celular",
+                                        "Perguntaram se era eu traficante ou tinha relação com o tráfico",
+                                        "Houve revista no veículo",
+                                        "Houve revista na minha bolsa/mochila",
+                                        "Houve revista pessoal",
+                                        "Perguntaram para onde eu estava indo",
+                                        "Houve consulta aos meus documentos"))
+ocorridob <- ggplot(ocorrb, aes(cat, fill=cat))+
+  geom_bar(width=.8, position = position_dodge(width = .25), show.legend = F)+
+  coord_flip()+
+  scale_fill_brewer(palette="RdBu")+
+  labs(title = "O que já ocorreu com você nas abordagens
+       policiais? - entre brancos -", x="respostas",y="Quantidade de respostas", subtitle = "(Mais de uma opção era permitida)")+
+  theme_classic()
+ggplotly(ocorridob + theme(legend.position = "none"))
+```
+
+```{r echo=FALSE}
+ocorridosn <- negros$Ocorridos
+cat1 <- grep("Houve consulta aos meus documentos", ocorridosn)
+cat1 <- rep("Houve consulta aos meus documentos", each=582)
+cat1 <- cbind(nome=row.names(cat1), cat=cat1)
+cat1 <- as.data.frame.matrix(cat1)
+cat2 <- grep("Houve revista no meu celular", ocorridosn)
+cat2 <- rep("Houve revista no meu celular", each=105)
+cat2 <- cbind(nome=row.names(cat2), cat=cat2)
+cat2 <- as.data.frame.matrix(cat2)
+cat3 <- grep("Houve revista na minha bolsa/mochila", ocorridosn)
+cat3 <- rep("Houve revista na minha bolsa/mochila", each=407)
+cat3 <- cbind(nome=row.names(cat3), cat=cat3)
+cat3 <- as.data.frame.matrix(cat3)
+cat4 <- grep("Houve revista pessoal", ocorridosn)
+cat4 <- rep("Houve revista pessoal", each=509)
+cat4 <- cbind(nome=row.names(cat4), cat=cat4)
+cat4 <- as.data.frame.matrix(cat4)
+cat5 <- grep("Jogaram meus pertences no chão", ocorridosn)
+cat5 <- rep("Jogaram meus pertences no chão", each=120)
+cat5 <- cbind(nome=row.names(cat5), cat=cat5)
+cat5 <- as.data.frame.matrix(cat5)
+cat6 <- grep("Perguntaram para onde eu estava indo", ocorridosn)
+cat6 <- rep("Perguntaram para onde eu estava indo", each=559)
+cat6 <- cbind(nome=row.names(cat6), cat=cat6)
+cat6 <- as.data.frame.matrix(cat6)
+cat7 <- grep("Perguntaram se era eu traficante ou tinha relação com o tráfico", ocorridosn)
+cat7 <- rep("Perguntaram se era eu traficante ou tinha relação com o tráfico", each=240)
+cat7 <- cbind(nome=row.names(cat7), cat=cat7)
+cat7 <- as.data.frame.matrix(cat7)
+cat8 <- grep("Houve revista no veículo", ocorridosn)
+cat8 <- rep("Houve revista no veículo", each=287)
+cat8 <- cbind(nome=row.names(cat8), cat=cat8)
+cat8 <- as.data.frame.matrix(cat8)
+cat9 <- grep("Tentaram armar uma situação falsa para me incriminar", ocorridosn)
+cat9 <- rep("Tentaram armar uma situação falsa para me incriminar", each=75)
+cat9 <- cbind(nome=row.names(cat9), cat=cat9)
+cat9 <- as.data.frame.matrix(cat9)
+cat10 <- grep("Disseram que um dos meus pertences era roubado", ocorridosn)
+cat10 <- rep("Disseram que um dos meus pertences era roubado", each=68)
+cat10 <- cbind(nome=row.names(cat10), cat=cat10)
+cat10 <- as.data.frame.matrix(cat10)
+cat11 <- grep("Rasgaram meus documentos", ocorridosn)
+cat11 <- rep("Rasgaram meus documentos", each=14)
+cat11 <- cbind(nome=row.names(cat11), cat=cat11)
+cat11 <- as.data.frame.matrix(cat11)
+ocorrn <- rbind(cat1,cat2,cat3,cat4,cat5,cat6,cat7,cat8,cat9,cat10,cat11)
+ocorrn$cat <- factor(ocorrn$cat, levels=c("Rasgaram meus documentos",
+                                        "Disseram que um dos meus pertences era roubado",
+                                        "Tentaram armar uma situação falsa para me incriminar",
+                                        "Jogaram meus pertences no chão",
+                                        "Houve revista no meu celular",
+                                        "Perguntaram se era eu traficante ou tinha relação com o tráfico",
+                                        "Houve revista no veículo",
+                                        "Houve revista na minha bolsa/mochila",
+                                        "Houve revista pessoal",
+                                        "Perguntaram para onde eu estava indo",
+                                        "Houve consulta aos meus documentos"))
+ocorridon <- ggplot(ocorrn, aes(cat, fill=cat))+
+  geom_bar(width=.8, position = position_dodge(width = .25), show.legend = F)+
+  coord_flip()+
+  scale_fill_brewer(palette="RdBu")+
+  labs(title = "O que já ocorreu com você nas abordagens
+       policiais? - entre negros -", x="respostas",y="Quantidade de respostas", subtitle = "(Mais de uma opção era permitida)")+
+  theme_classic()
+ggplotly(ocorridon + theme(legend.position = "none"))
+```
+
+
+<br>
+
+## **Gênero do policial**
+
+```{r echo=FALSE}
+sexo <- ggplot(base3, aes(PolicialMesmoGênero, fill=Gênero))+
+  geom_bar(show.legend = F) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()+
+  facet_wrap(~Raça)
+ggplotly(sexo)
+```
+  
+  <br>
+
+## **Revistas**
+
+```{r echo=FALSE}
+revistasb <- brancos$Revistas
+cat1a <- grep("Nenhuma das alternativas anteriores", revistasb)
+cat1a <- rep("Nenhuma das alternativas anteriores", each=46)
+cat1a <- cbind(nome=row.names(cat1a), cat=cat1a)
+cat1a <- as.data.frame.matrix(cat1a)
+cat2a <- grep("Tocaram nas minhas partes íntimas", revistasb)
+cat2a <- rep("Tocaram nas minhas partes íntimas", each=33)
+cat2a <- cbind(nome=row.names(cat2a), cat=cat2a)
+cat2a <- as.data.frame.matrix(cat2a)
+cat3a <- grep("Pediram para eu tirar uma ou mais peça de roupa", revistasb)
+cat3a <- rep("Pediram para eu tirar uma ou mais peça de roupa", each=13)
+cat3a <- cbind(nome=row.names(cat3a), cat=cat3a)
+cat3a <- as.data.frame.matrix(cat3a)
+rveisb <- rbind(cat1a,cat2a,cat3a)
+rveisb$cat <- factor(rveisb$cat, levels=c("Pediram para eu tirar uma ou mais peça de roupa",
+                                        "Tocaram nas minhas partes íntimas",
+                                        "Nenhuma das alternativas anteriores"))
+revistasb <- ggplot(rveisb, aes(cat, fill=cat))+
+  geom_bar(width=.5, position = position_dodge(width = .25), show.legend = F)+
+  coord_flip()+
+  scale_fill_brewer(palette="RdBu")+
+  labs(title = "O que já aconteceu com você nas revistas
+       que você passou? - entre brancos", x="respostas",y="Quantidade de respostas", subtitle = "(Mais de uma opção era permitida)")+
+  theme_classic()
+ggplotly(revistasb + theme(legend.position = "none"))
+```
+
+
+```{r echo=FALSE}
+revistasn <- negros$Revistas
+cat1a <- grep("Nenhuma das alternativas anteriores", revistasn)
+cat1a <- rep("Nenhuma das alternativas anteriores", each=232)
+cat1a <- cbind(nome=row.names(cat1a), cat=cat1a)
+cat1a <- as.data.frame.matrix(cat1a)
+cat2a <- grep("Tocaram nas minhas partes íntimas", revistasn)
+cat2a <- rep("Tocaram nas minhas partes íntimas", each=232)
+cat2a <- cbind(nome=row.names(cat2a), cat=cat2a)
+cat2a <- as.data.frame.matrix(cat2a)
+cat3a <- grep("Pediram para eu tirar uma ou mais peça de roupa", revistasn)
+cat3a <- rep("Pediram para eu tirar uma ou mais peça de roupa", each=75)
+cat3a <- cbind(nome=row.names(cat3a), cat=cat3a)
+cat3a <- as.data.frame.matrix(cat3a)
+rveisn <- rbind(cat1a,cat2a,cat3a)
+rveisn$cat <- factor(rveisn$cat, levels=c("Pediram para eu tirar uma ou mais peça de roupa",
+                                        "Tocaram nas minhas partes íntimas",
+                                        "Nenhuma das alternativas anteriores"))
+revistasn <- ggplot(rveisn, aes(cat, fill=cat))+
+  geom_bar(width=.5, position = position_dodge(width = .25), show.legend = F)+
+  coord_flip()+
+  scale_fill_brewer(palette="RdBu")+
+  labs(title = "O que já aconteceu com você nas revistas
+       que você passou? - entre negros", x="respostas",y="Quantidade de respostas", subtitle = "(Mais de uma opção era permitida)")+
+  theme_classic()
+ggplotly(revistasn + theme(legend.position = "none"))
+```
+
+<br>
+
+## **Como foi o tratamento?**
+
+```{r echo=FALSE}
+tto <- ggplot(base3, aes(Tratamento, fill=Tratamento))+
+  geom_bar(show.legend = F) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()+
+  facet_wrap(~Raça)
+ggplotly(tto + theme(legend.position = "none"))
+```
+  
+```{r}
+tabpct(base3$Raça, base3$Tratamento, graph = F, percent = "row")
+```
+
+  <br>
+
+## **Situações**
+  
+```{r echo=FALSE}
+ocorridos2b <- brancos$Ocorridos2
+cat1b <- grep("Houve agressão verbal, xingamentos", ocorridos2b)
+cat1b <- rep("Houve agressão verbal, xingamentos", each=46)
+cat1b <- cbind(nome=row.names(cat1b), cat=cat1b)
+cat1b <- as.data.frame.matrix(cat1b)
+cat2b <- grep("Houve violência psicológica", ocorridos2b)
+cat2b <- rep("Houve violência psicológica", each=59)
+cat2b <- cbind(nome=row.names(cat2b), cat=cat2b)
+cat2b <- as.data.frame.matrix(cat2b)
+cat3b <- grep("Houve assédio moral", ocorridos2b)
+cat3b <- rep("Houve assédio moral", each=34)
+cat3b<- cbind(nome=row.names(cat3b), cat=cat3b)
+cat3b <- as.data.frame.matrix(cat3b)
+cat4b <- grep("Nenhuma das opções anteriores", ocorridos2b)
+cat4b <- rep("Nenhuma das opções anteriores", each=91)
+cat4b <- cbind(nome=row.names(cat4b), cat=cat4b)
+cat4b <- as.data.frame.matrix(cat4b)
+cat5b <- grep("Houve violência física", ocorridos2b)
+cat5b <- rep("Houve violência física", each=19)
+cat5b <- cbind(nome=row.names(cat5b), cat=cat5b)
+cat5b <- as.data.frame.matrix(cat5b)
+cat6b <- grep("Houve ameaças contra mim", ocorridos2b)
+cat6b <- rep("Houve ameaças contra mim", each=34)
+cat6b <- cbind(nome=row.names(cat6b), cat=cat6b)
+cat6b <- as.data.frame.matrix(cat6b)
+cat7b <- grep("Houve ameaça de morte", ocorridos2b)
+cat7b <- rep("Houve ameaça de morte", each=6)
+cat7b <- cbind(nome=row.names(cat7b), cat=cat7b)
+cat7b <- as.data.frame.matrix(cat7b)
+cat8b <- grep("Houve assédio sexual", ocorridos2b)
+cat8b <- rep("Houve assédio sexual", each=4)
+cat8b <- cbind(nome=row.names(cat8b), cat=cat8b)
+cat8b <- as.data.frame.matrix(cat8b)
+ocor2b <- rbind(cat1b,cat2b,cat3b, cat4b, cat5b, cat6b, cat7b, cat8b)
+ocor2b$cat <- factor(ocor2b$cat, levels=c("Houve ameaça de morte",
+                                        "Houve assédio sexual",
+                                        "Houve violência física",
+                                        "Houve ameaças contra mim",
+                                        "Houve assédio moral",
+                                        "Houve agressão verbal, xingamentos",
+                                        "Nenhuma das opções anteriores",
+                                        "Houve violência psicológica"))
+
+ocorridos2b <- ggplot(ocor2b, aes(cat, fill=cat))+
+  geom_bar(width=.5, position = position_dodge(width = .25), show.legend = F)+
+  coord_flip()+
+  scale_fill_brewer(palette="RdBu")+
+  labs(title = "Sobre o comportamento dos policias, 
+       o que aconteceu com você? - entre brancos -", x="respostas",y="Quantidade de respostas", subtitle = "(Mais de uma opção era permitida)")+
+  theme_classic()
+ggplotly(ocorridos2b + theme(legend.position = "none"))
+```
+
+  
+```{r echo=FALSE}
+ocorridos2n <- negros$Ocorridos2
+cat1b <- grep("Houve agressão verbal, xingamentos", ocorridos2n)
+cat1b <- rep("Houve agressão verbal, xingamentos", each=293)
+cat1b <- cbind(nome=row.names(cat1b), cat=cat1b)
+cat1b <- as.data.frame.matrix(cat1b)
+cat2b <- grep("Houve violência psicológica", ocorridos2n)
+cat2b <- rep("Houve violência psicológica", each=434)
+cat2b <- cbind(nome=row.names(cat2b), cat=cat2b)
+cat2b <- as.data.frame.matrix(cat2b)
+cat3b <- grep("Houve assédio moral", ocorridos2n)
+cat3b <- rep("Houve assédio moral", each=305)
+cat3b<- cbind(nome=row.names(cat3b), cat=cat3b)
+cat3b <- as.data.frame.matrix(cat3b)
+cat4b <- grep("Nenhuma das opções anteriores", ocorridos2n)
+cat4b <- rep("Nenhuma das opções anteriores", each=192)
+cat4b <- cbind(nome=row.names(cat4b), cat=cat4b)
+cat4b <- as.data.frame.matrix(cat4b)
+cat5b <- grep("Houve violência física", ocorridos2n)
+cat5b <- rep("Houve violência física", each=140)
+cat5b <- cbind(nome=row.names(cat5b), cat=cat5b)
+cat5b <- as.data.frame.matrix(cat5b)
+cat6b <- grep("Houve ameaças contra mim", ocorridos2n)
+cat6b <- rep("Houve ameaças contra mim", each=214)
+cat6b <- cbind(nome=row.names(cat6b), cat=cat6b)
+cat6b <- as.data.frame.matrix(cat6b)
+cat7b <- grep("Houve ameaça de morte", ocorridos2n)
+cat7b <- rep("Houve ameaça de morte", each=46)
+cat7b <- cbind(nome=row.names(cat7b), cat=cat7b)
+cat7b <- as.data.frame.matrix(cat7b)
+cat8b <- grep("Houve assédio sexual", ocorridos2n)
+cat8b <- rep("Houve assédio sexual", each=43)
+cat8b <- cbind(nome=row.names(cat8b), cat=cat8b)
+cat8b <- as.data.frame.matrix(cat8b)
+ocor2n <- rbind(cat1b,cat2b,cat3b, cat4b, cat5b, cat6b, cat7b, cat8b)
+ocor2n$cat <- factor(ocor2n$cat, levels=c("Houve ameaça de morte",
+                                        "Houve assédio sexual",
+                                        "Houve violência física",
+                                        "Houve ameaças contra mim",
+                                        "Houve assédio moral",
+                                        "Houve agressão verbal, xingamentos",
+                                        "Nenhuma das opções anteriores",
+                                        "Houve violência psicológica"))
+
+ocorridos2n <- ggplot(ocor2n, aes(cat, fill=cat))+
+  geom_bar(width=.5, position = position_dodge(width = .25), show.legend = F)+
+  coord_flip()+
+  scale_fill_brewer(palette="RdBu")+
+  labs(title = "Sobre o comportamento dos policias, 
+       o que aconteceu com você? - entre negros -", x="respostas",y="Quantidade de respostas", subtitle = "(Mais de uma opção era permitida)")+
+  theme_classic()
+ggplotly(ocorridos2n + theme(legend.position = "none"))
+```
+
+  <br>
+
+## **Sentimentos**
+
+```{r echo=FALSE}
+sentimentosb <- brancos$Sentimentos
+cat1c <- grep("Humilhado", sentimentosb)
+cat1c <- rep("Humilhado", each=51)
+cat1c <- cbind(nome=row.names(cat1c), cat=cat1c)
+cat1c <- as.data.frame.matrix(cat1c)
+cat2c <- grep("Com raiva ou ódio", sentimentosb)
+cat2c <- rep("Com raiva ou ódio", each=62)
+cat2c <- cbind(nome=row.names(cat2c), cat=cat2c)
+cat2c <- as.data.frame.matrix(cat2c)
+cat3c <- grep("Exposto", sentimentosb)
+cat3c <- rep("Exposto", each=60)
+cat3c<- cbind(nome=row.names(cat3c), cat=cat3c)
+cat3c <- as.data.frame.matrix(cat3c)
+cat4c <- grep("Frustrado ou impotente", sentimentosb)
+cat4c <- rep("Frustrado ou impotente", each=57)
+cat4c <- cbind(nome=row.names(cat4c), cat=cat4c)
+cat4c <- as.data.frame.matrix(cat4c)
+cat5c <- grep("Revoltado", sentimentosb)
+cat5c <- rep("Revoltado", each=53)
+cat5c <- cbind(nome=row.names(cat5c), cat=cat5c)
+cat5c <- as.data.frame.matrix(cat5c)
+cat6c <- grep("Inseguro", sentimentosb)
+cat6c <- rep("Inseguro", each=69)
+cat6c <- cbind(nome=row.names(cat6c), cat=cat6c)
+cat6c <- as.data.frame.matrix(cat6c)
+cat7c <- grep("Tendo minha privacidade invadida", sentimentosb)
+cat7c <- rep("Tendo minha privacidade invadida", each=54)
+cat7c <- cbind(nome=row.names(cat7c), cat=cat7c)
+cat7c <- as.data.frame.matrix(cat7c)
+cat8c <- grep("Com medo", sentimentosb)
+cat8c <- rep("Com medo", each=60)
+cat8c <- cbind(nome=row.names(cat8c), cat=cat8c)
+cat8c <- as.data.frame.matrix(cat8c)
+cat9c <- grep("Desrespeitado", sentimentosb)
+cat9c <- rep("Desrespeitado", each=67)
+cat9c <- cbind(nome=row.names(cat9c), cat=cat9c)
+cat9c <- as.data.frame.matrix(cat9c)
+cat10c <- grep("Aliviado por não ter acontecido algo pior", sentimentosb)
+cat10c <- rep("Aliviado por não ter acontecido algo pior", each=72)
+cat10c <- cbind(nome=row.names(cat10c), cat=cat10c)
+cat10c <- as.data.frame.matrix(cat10c)
+cat11c <- grep("Nenhuma das alternativas anteriores", sentimentosb)
+cat11c <- rep("Nenhuma das alternativas anteriores", each=46)
+cat11c <- cbind(nome=row.names(cat11c), cat=cat11c)
+cat11c <- as.data.frame.matrix(cat11c)
+sentb <- rbind(cat1c,cat2c,cat3c, cat4c, cat5c, cat6c, cat7c, cat8c, cat9c, cat10c, cat11c)
+sentb$cat <- factor(sentb$cat, levels=c("Nenhuma das alternativas anteriores",
+                                        "Tendo minha privacidade invadida",
+                                        "Revoltado",
+                                        "Humilhado",
+                                        "Houve assédio moral",
+                                        "Com raiva ou ódio",
+                                        "Com medo",
+                                        "Frustrado ou impotente",
+                                        "Desrespeitado",
+                                        "Inseguro",
+                                        "Aliviado por não ter acontecido algo pior",
+                                        "Exposto"))
+
+sentimb <- ggplot(sentb, aes(cat, fill=cat))+
+  geom_bar(width=.5, position = position_dodge(width = .25), show.legend = F)+
+  coord_flip()+
+  scale_fill_brewer(palette="RdBu")+
+  labs(title = "Na maioria das vezes, como você se sentiu
+       após as abordagens? - entre brancos -", x="respostas",y="Quantidade de respostas", subtitle = "(Mais de uma opção era permitida)")+
+  theme_classic()
+
+ggplotly(sentimb + theme(legend.position = "none"))
+```
+  
+  
+```{r echo=FALSE}
+sentimentosn <- negros$Sentimentos
+cat1c <- grep("Humilhado", sentimentosn)
+cat1c <- rep("Humilhado", each=453)
+cat1c <- cbind(nome=row.names(cat1c), cat=cat1c)
+cat1c <- as.data.frame.matrix(cat1c)
+cat2c <- grep("Com raiva ou ódio", sentimentosn)
+cat2c <- rep("Com raiva ou ódio", each=427)
+cat2c <- cbind(nome=row.names(cat2c), cat=cat2c)
+cat2c <- as.data.frame.matrix(cat2c)
+cat3c <- grep("Exposto", sentimentosn)
+cat3c <- rep("Exposto", each=452)
+cat3c<- cbind(nome=row.names(cat3c), cat=cat3c)
+cat3c <- as.data.frame.matrix(cat3c)
+cat4c <- grep("Frustrado ou impotente", sentimentosn)
+cat4c <- rep("Frustrado ou impotente", each=457)
+cat4c <- cbind(nome=row.names(cat4c), cat=cat4c)
+cat4c <- as.data.frame.matrix(cat4c)
+cat5c <- grep("Revoltado", sentimentosn)
+cat5c <- rep("Revoltado", each=392)
+cat5c <- cbind(nome=row.names(cat5c), cat=cat5c)
+cat5c <- as.data.frame.matrix(cat5c)
+cat6c <- grep("Inseguro", sentimentosn)
+cat6c <- rep("Inseguro", each=470)
+cat6c <- cbind(nome=row.names(cat6c), cat=cat6c)
+cat6c <- as.data.frame.matrix(cat6c)
+cat7c <- grep("Tendo minha privacidade invadida", sentimentosn)
+cat7c <- rep("Tendo minha privacidade invadida", each=336)
+cat7c <- cbind(nome=row.names(cat7c), cat=cat7c)
+cat7c <- as.data.frame.matrix(cat7c)
+cat8c <- grep("Com medo", sentimentosn)
+cat8c <- rep("Com medo", each=430)
+cat8c <- cbind(nome=row.names(cat8c), cat=cat8c)
+cat8c <- as.data.frame.matrix(cat8c)
+cat9c <- grep("Desrespeitado", sentimentosn)
+cat9c <- rep("Desrespeitado", each=452)
+cat9c <- cbind(nome=row.names(cat9c), cat=cat9c)
+cat9c <- as.data.frame.matrix(cat9c)
+cat10c <- grep("Aliviado por não ter acontecido algo pior", sentimentosn)
+cat10c <- rep("Aliviado por não ter acontecido algo pior", each=430)
+cat10c <- cbind(nome=row.names(cat10c), cat=cat10c)
+cat10c <- as.data.frame.matrix(cat10c)
+cat11c <- grep("Nenhuma das alternativas anteriores", sentimentosn)
+cat11c <- rep("Nenhuma das alternativas anteriores", each=30)
+cat11c <- cbind(nome=row.names(cat11c), cat=cat11c)
+cat11c <- as.data.frame.matrix(cat11c)
+sentn <- rbind(cat1c,cat2c,cat3c, cat4c, cat5c, cat6c, cat7c, cat8c, cat9c, cat10c, cat11c)
+sentn$cat <- factor(sentn$cat, levels=c("Nenhuma das alternativas anteriores",
+                                        "Tendo minha privacidade invadida",
+                                        "Revoltado",
+                                        "Humilhado",
+                                        "Houve assédio moral",
+                                        "Com raiva ou ódio",
+                                        "Com medo",
+                                        "Frustrado ou impotente",
+                                        "Desrespeitado",
+                                        "Inseguro",
+                                        "Aliviado por não ter acontecido algo pior",
+                                        "Exposto"))
+
+sentimn <- ggplot(sentn, aes(cat, fill=cat))+
+  geom_bar(width=.5, position = position_dodge(width = .25), show.legend = F)+
+  coord_flip()+
+  scale_fill_brewer(palette="RdBu")+
+  labs(title = "Na maioria das vezes, como você se sentiu
+       após as abordagens? - entre negros -", x="respostas",y="Quantidade de respostas", subtitle = "(Mais de uma opção era permitida)")+
+  theme_classic()
+
+ggplotly(sentimn + theme(legend.position = "none"))
+```
+  
+<br>
+
+## **Transporte**
+  
+  
+```{r echo=FALSE}
+transp <- ggplot(base3, aes(Transporte, fill=Transporte))+
+  geom_bar(show.legend = F, na.rm = T) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()+
+  facet_wrap(~Raça)
+ggplotly(transp + theme(legend.position = "none"))
+```
+  
+```{r}
+tabpct(base3$Raça, base3$Transporte, percent = "row", graph = F)
+```
+  
+  <br>
+
+## **Racismo**
+  
+  625 pessoas (64%) nunca tiveram sua raça mencionada em abordagens policiais
+```{r echo=FALSE}
+racismo <- ggplot(base3, aes(Racismo, fill=Racismo))+
+  geom_bar(show.legend = F, na.rm = T) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()+
+  facet_wrap(~Raça)
+  ggplotly(racismo + theme(legend.position = "none"))
+```
+  
+```{r}
+tabpct(base3$Raça, base3$Racismo, percent = "row", graph = F)
+```
+  
+  
+  <br>
+
+## **Armas**
+  
+
+```{r echo=FALSE}
+armas <- ggplot(base3, aes(Armas, fill=Armas))+
+  geom_bar(show.legend = F, na.rm = T) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()+
+  facet_wrap(~Raça)
+  ggplotly(armas + theme(legend.position = "none"))
+```
+  
+```{r}
+tabpct(base3$Raça, base3$Armas, percent = "row", graph = F)
+```
+  
+  
+<br>
+
+## **Motivos apresentados**
+
+```{r echo=FALSE}
+motivob <- brancos$Motivo
+cat1d <- grep("Me informaram que estavam me abordando como parte da rotina do trabalho", motivob)
+cat1d <- rep("Me informaram que estavam me abordando como parte da rotina do trabalho", each=62)
+cat1d <- cbind(nome=row.names(cat1d), cat=cat1d)
+cat1d <- as.data.frame.matrix(cat1d)
+cat2d <- grep("Estavam abordando várias pessoas no local", motivob)
+cat2d <- rep("Estavam abordando várias pessoas no local", each=72)
+cat2d <- cbind(nome=row.names(cat2d), cat=cat2d)
+cat2d <- as.data.frame.matrix(cat2d)
+cat3d <- grep("Não me informaram o motivo", motivob)
+cat3d <- rep("Não me informaram o motivo", each=52)
+cat3d<- cbind(nome=row.names(cat3d), cat=cat3d)
+cat3d <- as.data.frame.matrix(cat3d)
+cat4d <- grep("Me disseram que minha ATITUDE era suspeita", motivob)
+cat4d <- rep("Me disseram que minha ATITUDE era suspeita", each=47)
+cat4d <- cbind(nome=row.names(cat4d), cat=cat4d)
+cat4d <- as.data.frame.matrix(cat4d)
+cat5d <- grep("Me disseram que estranharam alguém como eu ali naquele local que eu estava", motivob)
+cat5d <- rep("Me disseram que estranharam alguém como eu ali naquele local que eu estava", each=34)
+cat5d <- cbind(nome=row.names(cat5d), cat=cat5d)
+cat5d <- as.data.frame.matrix(cat5d)
+cat6d <- grep("Me disseram que EU PARECIA SER um suspeito que estavam procurando", motivob)
+cat6d <- rep("Me disseram que EU PARECIA SER um suspeito que estavam procurando", each=17)
+cat6d <- cbind(nome=row.names(cat6d), cat=cat6d)
+cat6d <- as.data.frame.matrix(cat6d)
+cat7d <- grep("Me informaram que estavam fazendo uma operação especial e precisavam me abordar", motivob)
+cat7d <- rep("Me informaram que estavam fazendo uma operação especial e precisavam me abordar", each=28)
+cat7d <- cbind(nome=row.names(cat7d), cat=cat7d)
+cat7d <- as.data.frame.matrix(cat7d)
+cat8d <- grep("Me disseram que tinham recebido uma denúncia e precisavam me abordar", motivob)
+cat8d <- rep("Me disseram que tinham recebido uma denúncia e precisavam me abordar", each=25)
+cat8d <- cbind(nome=row.names(cat8d), cat=cat8d)
+cat8d <- as.data.frame.matrix(cat8d)
+cat9d <- grep("Nenhuma das alternativas anteriores", motivob)
+cat9d <- rep("Nenhuma das alternativas anteriores", each=6)
+cat9d <- cbind(nome=row.names(cat9d), cat=cat9d)
+cat9d <- as.data.frame.matrix(cat9d)
+
+motivb <- rbind(cat1d,cat2d,cat3d, cat4d, cat5d, cat6d, cat7d, cat8d, cat9d)
+motivb$cat <- factor(motivb$cat, levels=c("Nenhuma das alternativas anteriores",
+                                        "Me disseram que tinham recebido uma denúncia e precisavam me abordar",
+                                        "Me disseram que EU PARECIA SER um suspeito que estavam procurando",
+                                        "Me informaram que estavam fazendo uma operação especial e precisavam me abordar",
+                                        "Me disseram que estranharam alguém como eu ali naquele local que eu estava",
+                                        "Estavam abordando várias pessoas no local",
+                                        "Me disseram que minha ATITUDE era suspeita",
+                                        "Não me informaram o motivo",
+                                        "Me informaram que estavam me abordando como parte da rotina do trabalho"))
+
+motivob <- ggplot(motivb, aes(cat, fill=cat))+
+  geom_bar(width=.5, position = position_dodge(width = .25), show.legend = F)+
+  coord_flip()+
+  scale_fill_brewer(palette="RdBu")+
+  labs(title = "O que o policial falou ser o motivo
+       para lhe abordar? - entre brancos -", x="respostas",y="Quantidade de respostas", subtitle = "(Mais de uma opção era permitida)")+
+  theme_classic()
+ggplotly(motivob + theme(legend.position = "none"))
+```
+ 
+```{r echo=FALSE}
+motivon <- negros$Motivo
+cat1d <- grep("Me informaram que estavam me abordando como parte da rotina do trabalho", motivon)
+cat1d <- rep("Me informaram que estavam me abordando como parte da rotina do trabalho", each=361)
+cat1d <- cbind(nome=row.names(cat1d), cat=cat1d)
+cat1d <- as.data.frame.matrix(cat1d)
+cat2d <- grep("Estavam abordando várias pessoas no local", motivon)
+cat2d <- rep("Estavam abordando várias pessoas no local", each=210)
+cat2d <- cbind(nome=row.names(cat2d), cat=cat2d)
+cat2d <- as.data.frame.matrix(cat2d)
+cat3d <- grep("Não me informaram o motivo", motivon)
+cat3d <- rep("Não me informaram o motivo", each=328)
+cat3d<- cbind(nome=row.names(cat3d), cat=cat3d)
+cat3d <- as.data.frame.matrix(cat3d)
+cat4d <- grep("Me disseram que minha ATITUDE era suspeita", motivon)
+cat4d <- rep("Me disseram que minha ATITUDE era suspeita", each=264)
+cat4d <- cbind(nome=row.names(cat4d), cat=cat4d)
+cat4d <- as.data.frame.matrix(cat4d)
+cat5d <- grep("Me disseram que estranharam alguém como eu ali naquele local que eu estava", motivon)
+cat5d <- rep("Me disseram que estranharam alguém como eu ali naquele local que eu estava", each=194)
+cat5d <- cbind(nome=row.names(cat5d), cat=cat5d)
+cat5d <- as.data.frame.matrix(cat5d)
+cat6d <- grep("Me disseram que EU PARECIA SER um suspeito que estavam procurando", motivon)
+cat6d <- rep("Me disseram que EU PARECIA SER um suspeito que estavam procurando", each=201)
+cat6d <- cbind(nome=row.names(cat6d), cat=cat6d)
+cat6d <- as.data.frame.matrix(cat6d)
+cat7d <- grep("Me informaram que estavam fazendo uma operação especial e precisavam me abordar", motivon)
+cat7d <- rep("Me informaram que estavam fazendo uma operação especial e precisavam me abordar", each=163)
+cat7d <- cbind(nome=row.names(cat7d), cat=cat7d)
+cat7d <- as.data.frame.matrix(cat7d)
+cat8d <- grep("Me disseram que tinham recebido uma denúncia e precisavam me abordar", motivon)
+cat8d <- rep("Me disseram que tinham recebido uma denúncia e precisavam me abordar", each=155)
+cat8d <- cbind(nome=row.names(cat8d), cat=cat8d)
+cat8d <- as.data.frame.matrix(cat8d)
+cat9d <- grep("Nenhuma das alternativas anteriores", motivon)
+cat9d <- rep("Nenhuma das alternativas anteriores", each=11)
+cat9d <- cbind(nome=row.names(cat9d), cat=cat9d)
+cat9d <- as.data.frame.matrix(cat9d)
+
+motivn <- rbind(cat1d,cat2d,cat3d, cat4d, cat5d, cat6d, cat7d, cat8d, cat9d)
+motivn$cat <- factor(motivn$cat, levels=c("Nenhuma das alternativas anteriores",
+                                        "Me disseram que tinham recebido uma denúncia e precisavam me abordar",
+                                        "Me disseram que EU PARECIA SER um suspeito que estavam procurando",
+                                        "Me informaram que estavam fazendo uma operação especial e precisavam me abordar",
+                                        "Me disseram que estranharam alguém como eu ali naquele local que eu estava",
+                                        "Estavam abordando várias pessoas no local",
+                                        "Me disseram que minha ATITUDE era suspeita",
+                                        "Não me informaram o motivo",
+                                        "Me informaram que estavam me abordando como parte da rotina do trabalho"))
+
+motivon <- ggplot(motivn, aes(cat, fill=cat))+
+  geom_bar(width=.5, position = position_dodge(width = .25), show.legend = F)+
+  coord_flip()+
+  scale_fill_brewer(palette="RdBu")+
+  labs(title = "O que o policial falou ser o motivo
+       para lhe abordar? - entre negros -", x="respostas",y="Quantidade de respostas", subtitle = "(Mais de uma opção era permitida)")+
+  theme_classic()
+ggplotly(motivon + theme(legend.position = "none"))
+```
+ 
+  <br>
+
+## **Identificação**
+  
+  
+```{r echo=FALSE}
+ident <- ggplot(base3, aes(Identificação, fill=Identificação))+
+  geom_bar(show.legend = F, na.rm = T) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()+
+  facet_wrap(~Raça)
+  ggplotly(ident + theme(legend.position = "none"))
+```
+  
+```{r}
+tabpct(base3$Raça, base3$Identificação, percent = "row", graph = F)
+```
+  
+  
+  <br>
+
+## **Tempo**
+
+```{r echo=FALSE}
+tempo <- ggplot(base3, aes(Tempo, fill=Tempo))+
+  geom_bar(show.legend = F, na.rm = T) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()+
+  facet_wrap(~Raça)
+  ggplotly(tempo + theme(legend.position = "none"))
+```
+  
+```{r}
+tabpct(base3$Raça, base3$Tempo, percent = "row", graph = F)
+```
+  
+<br>
+
+## **Grupos policiais**
+
+```{r echo=FALSE}
+tipos <- base3$Tipos
+cat1e <- grep("Policia Militar", tipos)
+cat1e <- rep("Policia Militar", each=885)
+cat1e <- cbind(nome=row.names(cat1e), cat=cat1e)
+cat1e <- as.data.frame.matrix(cat1e)
+cat2e <- grep("Grupo Especial", tipos)
+cat2e <- rep("Grupo Especial", each=131)
+cat2e <- cbind(nome=row.names(cat2e), cat=cat2e)
+cat2e <- as.data.frame.matrix(cat2e)
+cat3e <- grep("Guarda Civil Metropolitana/Guarda Municipal", tipos)
+cat3e <- rep("Guarda Civil Metropolitana/Guarda Municipal", each=112)
+cat3e<- cbind(nome=row.names(cat3e), cat=cat3e)
+cat3e <- as.data.frame.matrix(cat3e)
+cat4e <- grep("Policia Civil", tipos)
+cat4e <- rep("Policia Civil", each=213)
+cat4e <- cbind(nome=row.names(cat4e), cat=cat4e)
+cat4e <- as.data.frame.matrix(cat4e)
+cat5e <- grep("Policia Rodoviário Federal", tipos)
+cat5e <- rep("Policia Rodoviário Federal", each=153)
+cat5e <- cbind(nome=row.names(cat5e), cat=cat5e)
+cat5e <- as.data.frame.matrix(cat5e)
+cat6e <- grep("Muito variado, prefiro não escolher", tipos)
+cat6e <- rep("Muito variado, prefiro não escolher", each=47)
+cat6e <- cbind(nome=row.names(cat6e), cat=cat6e)
+cat6e <- as.data.frame.matrix(cat6e)
+cat7e <- grep("Exército", tipos)
+cat7e <- rep("Exército", each=25)
+cat7e <- cbind(nome=row.names(cat7e), cat=cat7e)
+cat7e <- as.data.frame.matrix(cat7e)
+cat8e <- grep("Policia Federal", tipos)
+cat8e <- rep("Policia Federal", each=23)
+cat8e <- cbind(nome=row.names(cat8e), cat=cat8e)
+cat8e <- as.data.frame.matrix(cat8e)
+cat9e <- grep("Força Nacional", tipos)
+cat9e <- rep("Força Nacional", each=13)
+cat9e <- cbind(nome=row.names(cat9e), cat=cat9e)
+cat9e <- as.data.frame.matrix(cat9e)
+tipos <- rbind(cat1e,cat2e,cat3e, cat4e, cat5e, cat6e, cat7e, cat8e, cat9e)
+tipos$cat <- factor(tipos$cat, levels=c("Força Nacional",
+                                        "Exército",
+                                        "Muito variado, prefiro não escolher",
+                                        "Policia Federal",
+                                        "Guarda Civil Metropolitana/Guarda Municipal",
+                                        "Grupo Especial",
+                                        "Policia Rodoviário Federal",
+                                        "Policia Civil",
+                                        "Policia Militar"))
+
+tipo <- ggplot(tipos, aes(cat, fill=cat))+
+  geom_bar(width=.5, position = position_dodge(width = .25), show.legend = F)+
+  coord_flip()+
+  scale_fill_brewer(palette="RdBu")+
+  labs(title = "Por quais tipos de policiais ou agentes
+       você já foi abordado?", x="respostas",y="Quantidade de respostas", subtitle = "(Mais de uma opção era permitida)")+
+  theme_classic()
+ggplotly(tipo + theme(legend.position = "none"))
+```
+  
+  
+<br>
+
+## **Local**
+
+```{r echo=FALSE}
+local <- ggplot(base3, aes(Local, fill=Local))+
+  geom_bar(show.legend = F, na.rm = T) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()+
+  facet_wrap(~Raça)
+  ggplotly(local + theme(legend.position = "none"))
+```
+  
+```{r}
+tabpct(base3$Raça, base3$Local, percent = "row", graph = F)
+```
+  
+  <br>
+
+## **Imagem**
+
+```{r echo=FALSE}
+imagem <- ggplot(base3, aes(Imagem, fill=Imagem))+
+  geom_bar(show.legend = F, na.rm = T) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  coord_flip()+
+  facet_wrap(~Raça)
+  ggplotly(imagem + theme(legend.position = "none"))
+```
+  
+```{r}
+tabpct(base3$Raça, base3$Imagem, percent = "row", graph = F)
+```
+  
+<br>
+
+## **Menor de 18**
+
+```{r echo=FALSE}
+menor <- ggplot(base3, aes(Menor18, fill=Menor18))+
+  geom_bar(show.legend = F, na.rm = T) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  facet_wrap(~Raça)
+  ggplotly(menor + theme(legend.position = "none"))
+```
+  
+```{r}
+tabpct(base3$Raça, base3$Menor18, percent = "row", graph = F)
+```
+  
+<br>
+
+## **Abordagem em casa**
+
+```{r echo=FALSE}
+casa <- ggplot(base3, aes(Casa, fill=Casa))+
+  geom_bar(show.legend = F, na.rm = T) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  facet_wrap(~Raça)
+  ggplotly(casa + theme(legend.position = "none"))
+```
+  
+```{r}
+tabpct(base3$Raça, base3$Casa, graph = F, percent = "row")
+```
+  
+  <br>
+
+## **Delegacia**
+
+```{r echo=FALSE}
+delegacia <- ggplot(base3, aes(Delegacia, fill=Delegacia))+
+  geom_bar(show.legend = F, na.rm = T) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))+
+  facet_wrap(~Raça)
+  ggplotly(delegacia + theme(legend.position = "none"))
+```
+  
+```{r}
+tabpct(base3$Raça, base3$Delegacia, percent = "row", graph = F)
+```
+  
+  <br>
+
+## **Na delegacia**
+
+```{r echo=FALSE}
+base5 <- subset(base3, Delegacia=="Sim")
+pretdel <- subset(base5, Raça=="Preta" | Raça=="Parda")
+```
+  
+  
+<br>
+
+## **Conhecidos**
+
+```{r echo=FALSE}
+base4 <- subset(base, Abordado=="Não")
+conhece <- ggplot(base4, aes(Conhecidos, fill=Conhecidos))+
+  geom_bar(show.legend = F, na.rm = T) +
+  labs(x="", y="quantidade", title = "")+
+  theme(plot.title = element_text(color = "darkorchid4",family="Courier"))
+  ggplotly(conhece + theme(legend.position = "none"))
+```
+  
+  
+<br>
+
+
+**Seguimos realizando análises e conferindo os resultados para verificação da qualidade das informações**  
+<br>
+<br>
+
+
+
+## **Quer dar uma olhadinha na base de dados?** 
+Só navegar nesse quadro abaixo.
+```{r echo=FALSE}
+base2 <- base[,-c(36:41)]
+paged_table(base2)
+```
+<br>
+
+![](/home/usuario/Downloads/IDDD+DATA_LABE_preta.png)
+
+
+## **Quer conhecer outros trabalhos do IDDD? Acesse esse [link](https://www.iddd.org.br/) .**
+
+
+
+
+
+
+
+
+
+
