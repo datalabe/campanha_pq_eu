@@ -54,3 +54,14 @@ O data_labe é uma organização social com sede no conjunto de favelas da Maré
 
 
 :nerd_face: |  [Paulo Mota](https://rpubs.com/polinhobr/679254)
+
+##   Licença
+
+Ao compartilhar este projeto cite os desenvolvedores!
+
+Os dados e scripts podem ser usados e melhorados por qualquer pessoa! Licença MIT
+  
+  
+
+
+Gostou desse projeto? Acesse nosso site para mais :wave: [data_labe](https://datalabe.org/)
