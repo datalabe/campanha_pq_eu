@@ -32,8 +32,8 @@ Sobre o data_labe
 ### Sobre data_labe
 O data_labe é uma organização social com sede no conjunto de favelas da Maré, no Rio de Janeiro, que atua desde 2016 em ações de comunicação, pesquisa e incidência política, com foco na Geração Cidadã de Dados. O laboratório parte do entendimento de que não existe neutralidade científica nos processos que envolvem a geração, a análise, o cruzamento e a publicação de dados, por isso há a necessidade de disputar a diversidade dos atores envolvidos nesses processos. A equipe é formada por profissionais de estatística, de jornalismo, de gestão, de design e de pesquisa, com origem em territórios populares e periferias, em sua maioria pessoas jovens, negras e LGBTQIA+. Nos últimos seis anos, o data_labe vem desenvolvendo reportagens, pesquisas, mapeamentos, consultorias, relatórios analíticos, oficinas, campanhas e eventos que levam em conta as potências e complexidades dos territórios populares e de seus moradores.
 
-#### Acesse a reportagem - Negros tem mais chances de ser abordado pela polícia <span>&#128073;&#127997;</span> [Reportagem](https://datalabe.org/negros-mais-chance-abordagem/) 
-#### Relatório pesquisa <span>&#128073;&#127997;</span> [Relatório](https://datalabe.org/relatorio-por-que-eu/) 
+#### Relatório pesquisa <span>&#128073;&#127997;</span> [Relatório](https://datalabe.org/relatorio-por-que-eu/)
+#### Acesse o release - NEGROS TÊM 4X MAIS CHANCE DE SEREM ABORDADOS <span>&#128073;&#127997;</span> [Reportagem](https://datalabe.org/negros-mais-chance-abordagem/) 
 
 
 
